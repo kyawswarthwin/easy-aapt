@@ -6,9 +6,8 @@ const { exec } = require('child_process');
 const mime = require('mime-types');
 const yauzl = require('yauzl');
 
-function packageInfo(filePath) {
+function packageInfo(filePath, aapt = path.join(__dirname, 'bin', os.platform(), 'aapt')) {
   return new Promise((resolve, reject) => {
-    const aapt = path.join(__dirname, 'bin', os.platform(), 'aapt');
     exec(`"${aapt}" d badging "${filePath}"`, (err, stdout, stderr) => {
       const error = err || stderr;
       if (error) {
