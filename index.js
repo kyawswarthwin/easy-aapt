@@ -4,7 +4,7 @@ const os = require('os');
 const path = require('path');
 const { exec } = require('child_process');
 const mime = require('mime-types');
-const yauzl = require('yauzl');
+const unzip = require('easy-unzip');
 
 function packageInfo(filePath, aapt = path.join(__dirname, 'bin', os.platform(), 'aapt')) {
   return new Promise(async (resolve, reject) => {
@@ -74,64 +74,23 @@ function xapkInfo(filePath) {
 
 function getManifest(filePath) {
   return new Promise((resolve, reject) => {
-    yauzl.open(filePath, { lazyEntries: true }, (err, zipfile) => {
-      if (err) {
-        reject(err);
-      } else {
-        zipfile.readEntry();
-        zipfile.on('entry', entry => {
-          if (entry.fileName === 'manifest.json') {
-            zipfile.openReadStream(entry, (err, stream) => {
-              if (err) {
-                reject(err);
-              } else {
-                const buf = [];
-                stream.on('data', chunk => {
-                  buf.push(chunk);
-                });
-                stream.on('end', () => {
-                  const manifest = JSON.parse(Buffer.concat(buf).toString());
-                  resolve(manifest);
-                });
-              }
-            });
-          }
-          zipfile.readEntry();
-        });
-      }
-    });
+    unzip(filePath, 'manifest.json')
+      .then(data => {
+        resolve(JSON.parse(data.toString()));
+      })
+      .catch(reject);
   });
 }
 
 function getIcon(filePath, fileName = 'icon.png') {
   return new Promise((resolve, reject) => {
-    yauzl.open(filePath, { lazyEntries: true }, (err, zipfile) => {
-      if (err) {
-        reject(err);
-      } else {
-        zipfile.readEntry();
-        zipfile.on('entry', entry => {
-          if (entry.fileName === fileName) {
-            zipfile.openReadStream(entry, (err, stream) => {
-              if (err) {
-                reject(err);
-              } else {
-                const buf = [];
-                stream.on('data', chunk => {
-                  buf.push(chunk);
-                });
-                stream.on('end', () => {
-                  const mediaType = mime.lookup(fileName);
-                  const base64 = Buffer.concat(buf).toString('base64');
-                  resolve(`data:${mediaType};base64,${base64}`);
-                });
-              }
-            });
-          }
-          zipfile.readEntry();
-        });
-      }
-    });
+    unzip(filePath, fileName)
+      .then(data => {
+        const mediaType = mime.lookup(fileName);
+        const base64 = data.toString('base64');
+        resolve(`data:${mediaType};base64,${base64}`);
+      })
+      .catch(reject);
   });
 }
 
